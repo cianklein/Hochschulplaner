@@ -130,7 +130,7 @@ form.add .f > span { font-size: 13px; color: var(--muted); font-weight: 600; }
 form.add .grow { flex: 1 1 280px; }
 form.add .mid { flex: 0 1 180px; }
 form.add .wide { flex: 1 1 100%; }
-input[type="text"], input[type="date"], input[type="time"] {
+input[type="text"], input[type="date"], input[type="time"], input[type="email"], input[type="password"], input[type="url"] {
   width: 100%; min-height: 50px; padding: 0 14px; background: var(--bg); border: 1.5px solid var(--line); border-radius: 12px; font-size: 17px;
 }
 input:focus { border-color: var(--brand); outline: none; box-shadow: 0 0 0 3px var(--brand-soft); }
@@ -209,6 +209,16 @@ ul.list { list-style: none; margin: 0; padding: 0; }
 .foot summary { cursor: pointer; font-weight: 600; color: var(--fg); min-height: 28px; }
 .foot ol { margin: 8px 0 0; padding-left: 20px; }
 
+.authwrap { min-height: 70vh; display: flex; align-items: center; justify-content: center; }
+.authcard { width: min(440px, 100%); padding: 28px; display: flex; flex-direction: column; gap: 24px; }
+.authbrand h1 { color: var(--fg); font-size: 26px; }
+.authcard .brand p { color: var(--muted); display: block; }
+.authform { display: flex; flex-direction: column; gap: 16px; }
+.authform .f { display: flex; flex-direction: column; gap: 6px; }
+.authform .f > span { font-size: 13px; color: var(--muted); font-weight: 600; }
+.chkline { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 16px; }
+.chkline input { width: 22px; height: 22px; accent-color: var(--brand); }
+.btn:disabled { opacity: .6; }
 @media (max-width: 860px) {
   body { font-size: 16px; padding-block: 16px 40px; }
   .app { grid-template-columns: minmax(0, 1fr); gap: 20px; }
@@ -233,7 +243,35 @@ ul.list { list-style: none; margin: 0; padding: 0; }
 <body>
 
 
-<div class="app">
+<div class="authwrap" id="auth" hidden>
+  <div class="sheet authcard">
+    <div class="brand authbrand">
+      <svg width="40" height="40" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#3A57D9"/><path d="M10 10h12M10 16h12M10 22h7" stroke="#fff" stroke-width="2.4" stroke-linecap="round" fill="none"/></svg>
+      <div><h1>Semesterheft</h1><p>Melde dich an, um deine Einträge zu sehen.</p></div>
+    </div>
+    <div id="loginBox">
+      <form id="loginForm" class="authform" method="post" action="#">
+        <label class="f"><span>Benutzername (E-Mail)</span><input type="email" id="lEmail" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required></label>
+        <label class="f"><span>Kennwort</span><input type="password" id="lPw" name="password" autocomplete="current-password" required></label>
+        <label class="chkline"><input type="checkbox" id="lRem"> Auf diesem Gerät angemeldet bleiben</label>
+        <p class="err" id="lErr" role="alert" hidden></p>
+        <button type="submit" class="btn" id="lBtn">Anmelden</button>
+      </form>
+      <p class="hint"><button type="button" class="linkbtn" id="cfgLink">Verbindung zum Server ändern</button></p>
+    </div>
+    <div id="setupBox" hidden>
+      <form id="setupForm" class="authform">
+        <p class="hint">Einmalige Einrichtung. Trage die Verbindungsdaten deines Supabase-Projekts ein. Beide Werte findest du dort unter Project Settings, API.</p>
+        <label class="f"><span>Project URL</span><input type="url" id="sUrl" placeholder="https://abcdefgh.supabase.co" autocapitalize="none" autocorrect="off" spellcheck="false"></label>
+        <label class="f"><span>Publishable oder anon key</span><input type="text" id="sKey" placeholder="sb_publishable_… oder eyJ…" autocapitalize="none" autocorrect="off" spellcheck="false"></label>
+        <p class="err" id="sErr" role="alert" hidden></p>
+        <button type="submit" class="btn">Speichern</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="app" id="appRoot" hidden>
   <aside class="side">
     <div class="brand">
       <svg width="34" height="34" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#3A57D9"/><path d="M10 10h12M10 16h12M10 22h7" stroke="#fff" stroke-width="2.4" stroke-linecap="round" fill="none"/></svg>
@@ -261,7 +299,7 @@ ul.list { list-style: none; margin: 0; padding: 0; }
       <div id="sync" role="status"></div>
       <details>
         <summary>Daten sichern und wiederherstellen</summary>
-        <p>Deine Einträge liegen nur auf diesem iPad. Kopiere die Sicherung und füge sie in eine Notiz ein. Zum Wiederherstellen fügst du sie hier wieder ein.</p>
+        <p>Deine Einträge liegen in deinem Konto auf dem Server. Zusätzlich kannst du eine Sicherung kopieren und in eine Notiz einfügen. Zum Wiederherstellen fügst du sie hier wieder ein.</p>
         <textarea id="bkText" aria-label="Sicherung" placeholder="Sicherung hier einfügen"></textarea>
         <div class="bk"><button type="button" class="btn ghost small" id="bkCopy">Sicherung kopieren</button><button type="button" class="btn ghost small" id="bkRestore">Aus Feld wiederherstellen</button></div>
         <p id="bkMsg" role="status"></p>
@@ -370,10 +408,19 @@ ul.list { list-style: none; margin: 0; padding: 0; }
     ];
   }
 
-  /* ---------- Speicher ---------- */
+  /* ---------- Verbindung und Anmeldung (Supabase) ---------- */
+  var BAKED = { url: "https://gnbvqlabvwaaeunhpddf.supabase.co", key: "sb_publishable_qMk86ImgRD--P-GOLyWH3A_7jLf6BPS" };
+  var LS_CFG = "semesterheft-cfg", LS_SESS = "semesterheft-sess", LS_MAIL = "semesterheft-mail";
+  var sess = null, saveTimer = null, saving = false, dirty = false, syncing = false, tickN = 0;
+
+  function cfg() {
+    try { var o = JSON.parse(localStorage.getItem(LS_CFG) || "null"); if (o && o.url && o.key) return o; } catch (e) {}
+    return BAKED.url && BAKED.key ? BAKED : null;
+  }
+  function lsKey() { return LS_DATA + "-" + (sess ? sess.uid : "x"); }
   function loadLocal() {
     try {
-      var r = localStorage.getItem(LS_DATA);
+      var r = localStorage.getItem(lsKey());
       if (r) {
         var o = JSON.parse(r);
         if (o && Array.isArray(o.items)) { if (!Array.isArray(o.plan)) o.plan = seedPlan(); return o; }
@@ -381,30 +428,111 @@ ul.list { list-style: none; margin: 0; padding: 0; }
     } catch (e) {}
     return null;
   }
-  function saveLocal() { try { localStorage.setItem(LS_DATA, JSON.stringify(state)); } catch (e) {} }
+  function saveLocal() { if (!sess) return; try { localStorage.setItem(lsKey(), JSON.stringify(state)); } catch (e) {} }
 
-  var docRef = null, saveTimer = null, saving = false, dirty = false;
+  function readSess() {
+    var r = null;
+    try { r = localStorage.getItem(LS_SESS) || sessionStorage.getItem(LS_SESS); } catch (e) {}
+    try { return r ? JSON.parse(r) : null; } catch (e) { return null; }
+  }
+  function writeSess(s) {
+    try { localStorage.removeItem(LS_SESS); sessionStorage.removeItem(LS_SESS); } catch (e) {}
+    if (!s) return;
+    try { (s.remember ? localStorage : sessionStorage).setItem(LS_SESS, JSON.stringify(s)); } catch (e) {}
+  }
+
+  function api(path, opts) {
+    var c = cfg();
+    opts = opts || {};
+    var h = { apikey: c.key, "Content-Type": "application/json" };
+    if (opts.token) h.Authorization = "Bearer " + opts.token;
+    if (opts.prefer) h.Prefer = opts.prefer;
+    return fetch(c.url.replace(/\/+$/, "") + path, { method: opts.method || "GET", headers: h, body: opts.body ? JSON.stringify(opts.body) : undefined }).then(function (r) {
+      return r.text().then(function (t) {
+        var j = null;
+        try { j = t ? JSON.parse(t) : null; } catch (e) {}
+        if (!r.ok) {
+          var err = new Error((j && (j.msg || j.error_description || j.message)) || ("HTTP " + r.status));
+          err.status = r.status;
+          throw err;
+        }
+        return j;
+      });
+    });
+  }
+  function sessFrom(j, remember) {
+    return { access: j.access_token, refresh: j.refresh_token, exp: Date.now() + (j.expires_in || 3600) * 1000 - 60000,
+      uid: j.user && j.user.id, email: j.user && j.user.email, remember: !!remember };
+  }
+  function login(email, pw, remember) {
+    return api("/auth/v1/token?grant_type=password", { method: "POST", body: { email: email, password: pw } }).then(function (j) {
+      sess = sessFrom(j, remember);
+      if (!sess.uid) throw new Error("Antwort ohne Benutzer");
+      writeSess(sess);
+    });
+  }
+  function refreshSess() {
+    var old = sess;
+    return api("/auth/v1/token?grant_type=refresh_token", { method: "POST", body: { refresh_token: old.refresh } }).then(function (j) {
+      sess = sessFrom(j, old.remember);
+      sess.uid = sess.uid || old.uid;
+      sess.email = sess.email || old.email;
+      writeSess(sess);
+    }, function (err) {
+      if (err.status === 400 || err.status === 401 || err.status === 403) err.auth = true;
+      throw err;
+    });
+  }
+  function ensureToken() { return sess.exp > Date.now() ? Promise.resolve() : refreshSess(); }
+  function authed(path, opts) {
+    opts = opts || {};
+    return ensureToken().then(function () {
+      return api(path, Object.assign({}, opts, { token: sess.access }));
+    }).catch(function (err) {
+      if (err.status === 401 && !err.auth) {
+        return refreshSess().then(function () { return api(path, Object.assign({}, opts, { token: sess.access })); });
+      }
+      throw err;
+    }).catch(function (err) {
+      if (err.status === 401) err.auth = true;
+      throw err;
+    });
+  }
+  function fetchRemote() {
+    return authed("/rest/v1/organizer?select=data&user_id=eq." + encodeURIComponent(sess.uid)).then(function (rows) {
+      return rows && rows[0] ? rows[0].data : null;
+    });
+  }
+  function pushRemote() {
+    return authed("/rest/v1/organizer?on_conflict=user_id", {
+      method: "POST", prefer: "resolution=merge-duplicates,return=minimal",
+      body: { user_id: sess.uid, data: { items: state.items, plan: state.plan, updated: state.updated }, updated_at: new Date().toISOString() }
+    });
+  }
+
   function setSync(kind) {
     var t = {
-      local: "Gespeichert auf diesem Gerät.",
-      ok: "Gespeichert und mit deinem Konto synchronisiert.",
-      err: "Speichern im Konto gerade nicht möglich. Die Daten bleiben auf diesem Gerät.",
-      load: "Lade gespeicherte Daten …"
+      ok: "Gespeichert und auf allen deinen Geräten abgeglichen.",
+      err: "Keine Verbindung zum Server. Änderungen bleiben auf diesem Gerät und werden später nachgeschickt.",
+      load: "Gleiche Daten mit dem Server ab …"
     };
     $("sync").textContent = t[kind] || "";
   }
   function persist() {
     saveLocal();
-    if (!docRef) return;
+    if (!sess) return;
     dirty = true;
     clearTimeout(saveTimer);
     saveTimer = setTimeout(flush, 600);
   }
   function flush() {
-    if (!docRef || !dirty) return;
+    if (!sess || !dirty) return;
     if (saving) { saveTimer = setTimeout(flush, 300); return; }
     dirty = false; saving = true;
-    docRef.set({ items: state.items, plan: state.plan, updated: state.updated }).then(function () { saving = false; setSync("ok"); }, function () { saving = false; setSync("err"); });
+    pushRemote().then(function () { saving = false; setSync("ok"); }, function (err) {
+      saving = false; dirty = true;
+      if (err.auth) logout("Deine Anmeldung ist abgelaufen. Bitte melde dich neu an.", true); else setSync("err");
+    });
   }
   function mutate(fn) {
     fn();
@@ -414,37 +542,81 @@ ul.list { list-style: none; margin: 0; padding: 0; }
     renderNav();
     renderNow();
   }
-
-  function pull() {
-    if (!docRef || dirty || saving) return Promise.resolve();
-    return docRef.get().then(function (snap) {
-      var r = snap.exists ? snap.data() : null;
-      if (r && Array.isArray(r.items) && (r.updated || 0) > (state.updated || 0)) {
+  function syncDown() {
+    if (!sess || syncing || dirty || saving) return Promise.resolve();
+    syncing = true;
+    return fetchRemote().then(function (r) {
+      syncing = false;
+      if (!sess) return;
+      var local = state.updated || 0;
+      if (r && Array.isArray(r.items) && (r.updated || 0) > local) {
         state = {
           items: r.items.map(function (x) { return Object.assign({}, x); }),
-          plan: Array.isArray(r.plan) ? r.plan.map(function (x) { return Object.assign({}, x); }) : state.plan,
+          plan: Array.isArray(r.plan) ? r.plan.map(function (x) { return Object.assign({}, x); }) : [],
           updated: r.updated
         };
         saveLocal();
         renderAll();
-      } else if ((state.updated || 0) > ((r && r.updated) || 0)) {
-        persist();
+      } else if (local > ((r && r.updated) || 0)) {
+        dirty = true; flush(); return;
       }
       setSync("ok");
-    }).catch(function () { setSync("err"); });
+    }, function (err) {
+      syncing = false;
+      if (err.auth) logout("Deine Anmeldung ist abgelaufen. Bitte melde dich neu an.", true); else setSync("err");
+    });
   }
-  function initSync() {
-    if (!(window.claude && window.claude.use)) { setSync("local"); return; }
+
+  /* Anmeldebildschirm */
+  function showErr(id, msg) { var el = $(id); el.textContent = msg || ""; el.hidden = !msg; }
+  function showLogin(msg) {
+    $("appRoot").hidden = true;
+    $("auth").hidden = false;
+    $("loginBox").hidden = false;
+    $("setupBox").hidden = true;
+    $("cfgLink").hidden = false;
+    try { if (!$("lEmail").value) $("lEmail").value = localStorage.getItem(LS_MAIL) || ""; } catch (e) {}
+    showErr("lErr", msg);
+  }
+  function showSetup(msg) {
+    $("appRoot").hidden = true;
+    $("auth").hidden = false;
+    $("loginBox").hidden = true;
+    $("setupBox").hidden = false;
+    var c = cfg() || {};
+    $("sUrl").value = c.url || ""; $("sKey").value = c.key || "";
+    showErr("sErr", msg);
+  }
+  function setBusy(b) { $("lBtn").disabled = b; $("lBtn").textContent = b ? "Melde an …" : "Anmelden"; }
+  function logout(msg, forced) {
+    clearTimeout(saveTimer);
+    if (!forced && !dirty) { try { localStorage.removeItem(lsKey()); } catch (e) {} }
+    writeSess(null);
+    sess = null; dirty = false; saving = false;
+    state = { items: [], plan: [], updated: 0 };
+    setBusy(false);
+    $("lPw").value = "";
+    showLogin(msg);
+  }
+  function enterApp() {
+    try { localStorage.setItem(LS_MAIL, sess.email || ""); } catch (e) {}
+    $("auth").hidden = true;
+    $("appRoot").hidden = false;
+    setBusy(false);
+    state = loadLocal() || { items: seed(), plan: seedPlan(), updated: 0 };
+    renderAll();
     setSync("load");
-    Promise.all([window.claude.use("user"), window.claude.use("db")]).then(function (r) {
-      var user = r[0], db = r[1];
-      if (!user || !db || !user.id) { setSync("local"); return null; }
-      return user.id().then(function (id) {
-        if (!id) { setSync("local"); return; }
-        docRef = db.doc("data/users/" + id + "/organizer");
-        return pull();
-      });
-    }).catch(function () { setSync("local"); });
+    syncDown();
+  }
+  function start() {
+    if (!cfg()) { showSetup(); return; }
+    sess = readSess();
+    if (!sess || !sess.uid || !sess.refresh) { sess = null; showLogin(); return; }
+    ensureToken().then(enterApp, function (e) {
+      if (e.auth) { sess = null; writeSess(null); showLogin("Bitte melde dich neu an."); }
+      else if (loadLocal()) { enterApp(); }
+      else { sess = null; showLogin("Keine Verbindung zum Server."); }
+    });
   }
 
   /* ---------- Daten-Helfer ---------- */
@@ -530,7 +702,8 @@ ul.list { list-style: none; margin: 0; padding: 0; }
     });
     $("nav").innerHTML = html;
     var anyEx = state.items.some(function (i) { return i.ex; }) || state.plan.some(function (p) { return p.ex; });
-    $("sideFoot").innerHTML = anyEx ? '<p class="hint">Einträge mit „Beispiel“ sind nur zur Ansicht.</p><button type="button" class="btn ghost small" data-act="clear-ex">Beispiele entfernen</button>' : "";
+    var acc = sess ? '<p class="hint">Angemeldet als<br>' + esc(sess.email || "") + '</p><button type="button" class="btn ghost small" data-act="logout">Abmelden</button>' : "";
+    $("sideFoot").innerHTML = (anyEx ? '<p class="hint">Einträge mit „Beispiel“ sind nur zur Ansicht.</p><button type="button" class="btn ghost small" data-act="clear-ex">Beispiele entfernen</button>' : "") + acc;
   }
 
   function renderHead() {
@@ -778,6 +951,7 @@ ul.list { list-style: none; margin: 0; padding: 0; }
       var f = view === "todo" ? todoFilter : shopFilter;
       state.items = state.items.filter(function (i) { return !(i.done && lists.indexOf(i.list) >= 0 && (f === "all" || i.list === f)); });
     });
+    else if (act === "logout") logout();
     else if (act === "clear-ex") { mutate(function () { state.items = state.items.filter(function (i) { return !i.ex; }); state.plan = state.plan.filter(function (p) { return !p.ex; }); }); renderForm(); }
   });
 
@@ -817,9 +991,35 @@ ul.list { list-style: none; margin: 0; padding: 0; }
     $("fText").focus();
   });
 
-  function tick() { renderNow(); if (view === "uni") applySuggestion(); }
+  function tick() {
+    if (!sess) return;
+    renderNow();
+    if (view === "uni") applySuggestion();
+    tickN++;
+    if (dirty && !saving) flush(); else if (tickN % 2 === 0) syncDown();
+  }
   setInterval(tick, 30000);
-  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") { tick(); pull(); } });
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") { tick(); syncDown(); } });
+
+  /* Formulare für Anmeldung und Verbindung */
+  $("loginForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var email = $("lEmail").value.trim(), pw = $("lPw").value;
+    if (!email || !pw) return;
+    showErr("lErr", ""); setBusy(true);
+    login(email, pw, $("lRem").checked).then(function () { enterApp(); $("lPw").value = ""; }, function (err) {
+      setBusy(false);
+      showErr("lErr", err.status === 400 || err.status === 401 ? "Benutzername oder Kennwort stimmt nicht." : err.status ? "Anmeldung nicht möglich: " + err.message : "Keine Verbindung zum Server. Prüfe dein Internet und die Verbindungsdaten.");
+    });
+  });
+  $("setupForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var url = $("sUrl").value.trim(), key = $("sKey").value.trim();
+    if (!/^https?:\/\//.test(url) || !key) { showErr("sErr", "Bitte die Adresse mit https:// und den Schlüssel eintragen."); return; }
+    try { localStorage.setItem(LS_CFG, JSON.stringify({ url: url, key: key })); } catch (err) {}
+    showLogin();
+  });
+  $("cfgLink").addEventListener("click", function () { showSetup(); });
 
 
   /* ---------- Sicherung ---------- */
@@ -837,7 +1037,7 @@ ul.list { list-style: none; margin: 0; padding: 0; }
       if (!o || !Array.isArray(o.items)) throw new Error("x");
       if (!Array.isArray(o.plan)) o.plan = [];
       o.updated = Date.now();
-      state = o; saveLocal(); renderAll();
+      state = o; persist(); renderAll();
       bkMsg("Sicherung eingespielt.");
     } catch (e) { bkMsg("Das ist keine gültige Sicherung. Füge den kompletten kopierten Text ein."); }
   });
@@ -847,13 +1047,10 @@ ul.list { list-style: none; margin: 0; padding: 0; }
   try {
     $("today").textContent = new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric", month: "long" }).format(new Date());
   } catch (e) {}
-  state = loadLocal() || { items: seed(), plan: seedPlan(), updated: 0 };
   var saved = null;
   try { saved = localStorage.getItem(LS_VIEW); } catch (e) {}
   view = saved && VIEWS[saved] ? saved : "uni";
-  setSync("local");
-  renderAll();
-  initSync();
+  start();
 })();
 </script>
 
