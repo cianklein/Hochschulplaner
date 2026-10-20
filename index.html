@@ -130,7 +130,7 @@ form.add .f > span { font-size: 13px; color: var(--muted); font-weight: 600; }
 form.add .grow { flex: 1 1 280px; }
 form.add .mid { flex: 0 1 180px; }
 form.add .wide { flex: 1 1 100%; }
-input[type="text"], input[type="date"], input[type="time"], input[type="email"], input[type="password"], input[type="url"] {
+input[type="text"], input[type="date"], input[type="time"], input[type="email"], input[type="password"], input[type="url"], select {
   width: 100%; min-height: 50px; padding: 0 14px; background: var(--bg); border: 1.5px solid var(--line); border-radius: 12px; font-size: 17px;
 }
 input:focus { border-color: var(--brand); outline: none; box-shadow: 0 0 0 3px var(--brand-soft); }
@@ -181,6 +181,26 @@ ul.list { list-style: none; margin: 0; padding: 0; }
 .tag.priv { background: var(--priv-soft); color: var(--priv); }
 .tag.warn { background: var(--warn-soft); color: var(--warn); }
 .tag.ex { background: transparent; border: 1px dashed var(--line); font-weight: 500; }
+select { appearance: none; -webkit-appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%; background-size: 6px 6px; background-repeat: no-repeat; padding-right: 36px; }
+.vh { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; pointer-events: none; }
+.filebtn { display: inline-flex; align-items: center; cursor: pointer; }
+.photoRow { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.thumb { width: 84px; height: 84px; object-fit: cover; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); display: block; }
+.thumbbtn { border: 0; padding: 0; background: none; border-radius: 12px; align-self: flex-start; }
+.note { font-size: 15px; color: var(--muted); overflow-wrap: anywhere; }
+.qhead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 20px 20px 8px; }
+.qhead h3 { margin: 0; font-family: var(--font-display); font-size: 21px; }
+.qhead span { color: var(--muted); font-size: 14px; font-weight: 600; }
+.sep .gname { display: inline-flex; align-items: center; gap: 8px; }
+.sep .gname .tag { text-transform: none; letter-spacing: 0; }
+.qdone { border-top: 1px solid var(--line); padding: 12px 20px; color: var(--muted); }
+.qdone summary { cursor: pointer; min-height: 32px; font-weight: 600; }
+.qdone ul { margin-top: 8px; }
+.okmsg { margin: 0; font-size: 15px; color: var(--priv); font-weight: 600; }
+.lightbox { position: fixed; inset: 0; z-index: 50; background: rgba(5, 10, 25, .92); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+  padding: calc(env(safe-area-inset-top, 0px) + 16px) max(16px, env(safe-area-inset-left, 0px)) calc(env(safe-area-inset-bottom, 0px) + 16px) max(16px, env(safe-area-inset-right, 0px)); }
+.lightbox img { max-width: 100%; max-height: 78vh; border-radius: 12px; background: #fff; }
+textarea.qtext { min-height: 84px; }
 .edit { flex: none; width: 44px; height: 44px; border: 0; background: transparent; border-radius: 10px; color: var(--muted); display: inline-flex; align-items: center; justify-content: center; }
 .edit:hover { background: var(--brand-soft); color: var(--brand); }
 .row.editing { display: block; background: var(--surface-2); }
@@ -189,6 +209,8 @@ ul.list { list-style: none; margin: 0; padding: 0; }
 .editform .f > span { font-size: 13px; color: var(--muted); font-weight: 600; }
 .editform .grow { flex: 1 1 260px; }
 .editform .mid { flex: 0 1 180px; }
+.editform .wide { flex: 1 1 100%; }
+.editform .err { flex: 1 1 100%; margin: 0; }
 .editbtns { display: flex; gap: 10px; }
 .del { flex: none; width: 44px; height: 44px; border: 0; background: transparent; border-radius: 10px; color: var(--muted); font-size: 26px; line-height: 1; }
 .del:hover { background: var(--warn-soft); color: var(--warn); }
@@ -280,6 +302,11 @@ ul.list { list-style: none; margin: 0; padding: 0; }
   </div>
 </div>
 
+<div class="lightbox" id="lightbox" data-act="lb-close" hidden role="dialog" aria-label="Foto">
+  <img id="lbImg" alt="Foto zur Frage">
+  <button type="button" class="btn" data-act="lb-close">Schließen</button>
+</div>
+
 <div class="app" id="appRoot" hidden>
   <aside class="side">
     <div class="brand">
@@ -301,6 +328,7 @@ ul.list { list-style: none; margin: 0; padding: 0; }
       <div class="seg" id="headTools" hidden></div>
     </div>
     <div id="nowWrap" hidden></div>
+    <div id="qWrap" hidden></div>
     <div id="formWrap" hidden></div>
     <div class="sheet" id="listWrap"><ul class="list" id="list"></ul></div>
     <div id="planWrap" hidden></div>
@@ -345,6 +373,7 @@ ul.list { list-style: none; margin: 0; padding: 0; }
     topic:     { label: "Wiederholen", fields: ["subject", "due"], dueLabel: "Wiederholen bis", suggest: true, ph: "z. B. Integration durch Substitution", tag: "uni", tagText: "Wiederholen" },
     uni_buy:   { label: "Besorgung Uni", fields: ["qty"], ph: "z. B. Skript im Copyshop drucken", tag: "uni", tagText: "Hochschule" },
     priv_todo: { label: "Erledigung", fields: ["due"], dueLabel: "Fällig am", ph: "Was muss erledigt werden?", tag: "priv", tagText: "Privat" },
+    question:  { label: "Frage", fields: ["subject"], tag: "uni", tagText: "Frage" },
     priv_buy:  { label: "Besorgung / Anschaffung", fields: ["qty"], ph: "z. B. Milch oder neue Kopfhörer", tag: "priv", tagText: "Privat" }
   };
   var DAY_LONG = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
@@ -353,7 +382,7 @@ ul.list { list-style: none; margin: 0; padding: 0; }
   var BUCKETS = ["Überfällig", "Heute", "Morgen", "Übermorgen", "Diese Woche", "Nächste Woche", "Später", "Ohne Datum"];
 
   var state = { items: [], plan: [], updated: 0 };
-  var editId = null;
+  var editId = null, pendingPhoto = "", editPhoto = "", lastQSubject = "", photoCache = {}, photoPending = {}, okTimer = null;
   var view = "uni";
   var capType = { uni: "hw", priv: "priv_todo" };
   var todoFilter = "all";
@@ -401,6 +430,7 @@ ul.list { list-style: none; margin: 0; padding: 0; }
       it("hw", "Protokoll zu Versuch 2 schreiben", { subject: "Physik", due: addDays(9) }),
       it("topic", "Integration durch Substitution", { subject: "Mathe", reps: 1, due: addDays(6) }),
       it("topic", "Newtonsche Axiome", { subject: "Physik", reps: 0 }),
+      it("question", "Warum ändert sich bei der Substitution das Vorzeichen der Grenzen?", { subject: "Mathe" }),
       it("uni_buy", "Skript im Copyshop drucken", {}),
       it("uni_buy", "Ersatzbatterien für den Taschenrechner", { qty: "2" }),
       it("priv_todo", "Paket zur Post bringen", { due: addDays(2) }),
@@ -520,6 +550,51 @@ ul.list { list-style: none; margin: 0; padding: 0; }
     });
   }
 
+  /* Fotos */
+  function readPhoto(file) {
+    return new Promise(function (res, rej) {
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () {
+        var w = img.naturalWidth, h = img.naturalHeight, sc = Math.min(1, 1280 / Math.max(w, h));
+        var cv = document.createElement("canvas");
+        cv.width = Math.max(1, Math.round(w * sc)); cv.height = Math.max(1, Math.round(h * sc));
+        cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+        URL.revokeObjectURL(url);
+        res(cv.toDataURL("image/jpeg", 0.72));
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); rej(new Error("Das Bild konnte nicht gelesen werden.")); };
+      img.src = url;
+    });
+  }
+  function uploadPhoto(dataUrl) {
+    var id = "ph" + uid();
+    return authed("/rest/v1/photos", { method: "POST", prefer: "return=minimal", body: { id: id, user_id: sess.uid, data: dataUrl } }).then(function () { photoCache[id] = dataUrl; return id; });
+  }
+  function deletePhoto(id) {
+    delete photoCache[id];
+    authed("/rest/v1/photos?id=eq." + encodeURIComponent(id), { method: "DELETE", prefer: "return=minimal" }).catch(function () {});
+  }
+  function loadPhotos() {
+    var imgs = document.querySelectorAll("img[data-photo]");
+    for (var k = 0; k < imgs.length; k++) {
+      (function (img) {
+        var id = img.dataset.photo;
+        if (img.getAttribute("src")) return;
+        if (photoCache[id]) { img.src = photoCache[id]; return; }
+        if (photoPending[id] || !sess) return;
+        photoPending[id] = true;
+        authed("/rest/v1/photos?select=data&id=eq." + encodeURIComponent(id)).then(function (rows) {
+          delete photoPending[id];
+          if (rows && rows[0]) {
+            photoCache[id] = rows[0].data;
+            var all = document.querySelectorAll('img[data-photo="' + id + '"]');
+            for (var m = 0; m < all.length; m++) all[m].src = photoCache[id];
+          }
+        }, function () { delete photoPending[id]; });
+      })(imgs[k]);
+    }
+  }
+
   function setSync(kind) {
     var t = {
       ok: "Gespeichert und auf allen deinen Geräten abgeglichen.",
@@ -549,6 +624,7 @@ ul.list { list-style: none; margin: 0; padding: 0; }
     state.updated = Date.now();
     persist();
     renderList();
+    renderQuestions();
     renderNav();
     renderNow();
   }
@@ -766,6 +842,75 @@ ul.list { list-style: none; margin: 0; padding: 0; }
     return '<datalist id="' + (id || "subjList") + '">' + subjects().map(function (s) { return '<option value="' + esc(s) + '">'; }).join("") + "</datalist>";
   }
 
+  function renderQuestionForm() {
+    var subs = subjects(), c = nowContext();
+    var def = c.cur && subs.indexOf(c.cur.subject) >= 0 ? c.cur.subject : (subs.indexOf(lastQSubject) >= 0 ? lastQSubject : (subs[0] || ""));
+    var showNew = !subs.length;
+    var opts = '<option value="">Ohne Fach</option>' + subs.map(function (s) { return '<option value="' + esc(s) + '"' + (s === def ? " selected" : "") + ">" + esc(s) + "</option>"; }).join("") + '<option value="__new"' + (showNew ? " selected" : "") + ">Neues Fach …</option>";
+    var open = state.items.filter(function (i) { return i.list === "question" && !i.done; }).length;
+    pendingPhoto = "";
+    setHtml("formWrap", '<form class="sheet add" id="qForm" autocomplete="off">' +
+      '<div class="qhead" style="padding:0;flex:1 1 100%"><h3>Frage für die Vorlesung</h3><span>' + open + (open === 1 ? " offene Frage" : " offene Fragen") + "</span></div>" +
+      '<label class="f mid"><span>Fach</span><select id="qSubject">' + opts + '</select></label>' +
+      '<label class="f mid" id="qNewWrap"' + (showNew ? "" : " hidden") + '><span>Neues Fach</span><input type="text" id="qSubjectNew" placeholder="z. B. Mathe" maxlength="40"></label>' +
+      '<label class="f wide"><span>Deine Frage</span><textarea class="qtext" id="qText" placeholder="Was ist dir unklar?" required maxlength="400"></textarea></label>' +
+      '<div class="f wide"><span>Foto (optional)</span><div class="photoRow">' +
+      '<label class="btn ghost small filebtn">Foto aufnehmen oder wählen<input type="file" class="vh" id="qPhoto" accept="image/*"></label>' +
+      '<img class="thumb" id="qPrev" alt="Vorschau" hidden><button type="button" class="linkbtn" id="qClear" data-act="photo-clear" hidden>Foto entfernen</button></div></div>' +
+      '<p class="err" id="qErr" role="alert" hidden></p><p class="okmsg" id="qOk" role="status" hidden></p>' +
+      '<button type="submit" class="btn" id="qBtn">Frage speichern</button>' +
+      '<p class="hint" style="flex:1 1 100%">Die Fragen erscheinen unter <button type="button" class="linkbtn" data-view="uni">In der Vorlesung</button>, das aktuelle Fach steht dort oben.</p></form>');
+  }
+
+  function questionRowHtml(it) {
+    if (it.id === editId) return editRowHtml(it);
+    var meta = "";
+    if (it.ex) meta += '<span class="tag ex">Beispiel</span>';
+    var note = it.note ? '<span class="note">Antwort: ' + esc(it.note) + "</span>" : "";
+    var photo = it.photo ? '<button type="button" class="thumbbtn" data-act="photo" aria-label="Foto vergrößern"><img class="thumb" data-photo="' + esc(it.photo) + '" alt="Foto zur Frage"></button>' : "";
+    return '<li class="row' + (it.done ? " done" : "") + '" data-id="' + esc(it.id) + '">' +
+      '<button type="button" class="chk" data-act="toggle" aria-pressed="' + (it.done ? "true" : "false") + '" aria-label="' + (it.done ? "Wieder öffnen: " : "Geklärt: ") + esc(it.text) + '"></button>' +
+      '<div class="txt"><span class="t">' + esc(it.text) + "</span>" + (meta ? '<span class="meta">' + meta + "</span>" : "") + note + photo + "</div>" +
+      '<button type="button" class="edit" data-act="edit" aria-label="Bearbeiten: ' + esc(it.text) + '">' + PENCIL + '</button>' +
+      '<button type="button" class="del" data-act="del" aria-label="Löschen: ' + esc(it.text) + '">×</button></li>';
+  }
+
+  function renderQuestions() {
+    if (view !== "uni") { setHtml("qWrap", ""); return; }
+    var qs = state.items.filter(function (i) { return i.list === "question"; });
+    if (!qs.length) {
+      setHtml("qWrap", '<div class="sheet"><div class="qhead"><h3>Fragen für die Vorlesung</h3></div><p class="hint" style="padding:0 20px 20px">Noch keine Fragen. Notiere sie zuhause unter <button type="button" class="linkbtn" data-view="todo">Zu erledigen</button>, dann stehen sie hier bereit.</p></div>');
+      return;
+    }
+    var open = qs.filter(function (i) { return !i.done; }).sort(function (a, b) { return (a.created || 0) - (b.created || 0); });
+    var done = qs.filter(function (i) { return i.done; }).sort(function (a, b) { return (b.created || 0) - (a.created || 0); });
+    var c = nowContext(), focus = "", flabel = "";
+    if (c.cur) { focus = c.cur.subject.toLowerCase(); flabel = c.kind === "run" ? "läuft gerade" : c.kind === "after" ? "gerade beendet" : "beginnt gleich"; }
+    else if (c.next) { focus = c.next.subject.toLowerCase(); flabel = "als Nächstes heute"; }
+    var groups = {}, names = [];
+    open.forEach(function (q) {
+      var k = (q.subject || "").toLowerCase();
+      if (!groups[k]) { groups[k] = { name: q.subject || "Ohne Fach", key: k, items: [] }; names.push(k); }
+      groups[k].items.push(q);
+    });
+    names.sort(function (a, b) {
+      if (a === focus) return -1; if (b === focus) return 1;
+      if (a === "") return 1; if (b === "") return -1;
+      return a < b ? -1 : 1;
+    });
+    var h = '<div class="sheet"><div class="qhead"><h3>Fragen für die Vorlesung</h3><span>' + open.length + (open.length === 1 ? " offen" : " offen") + "</span></div><ul class=\"list\">";
+    if (!open.length) h += emptyHtml("Alle Fragen geklärt", "Neue Fragen notierst du unter Zu erledigen.");
+    names.forEach(function (k) {
+      var g = groups[k];
+      h += '<li class="sep"><span class="gname">' + (g.key ? '<i class="dot ' + colorOf(g.name) + '"></i>' : "") + esc(g.name) + " · " + g.items.length + (k === focus && focus ? '<span class="tag uni">' + flabel + "</span>" : "") + "</span></li>";
+      h += g.items.map(questionRowHtml).join("");
+    });
+    h += "</ul>";
+    if (done.length) h += '<details class="qdone"><summary>Geklärte Fragen · ' + done.length + '</summary><ul class="list">' + done.map(questionRowHtml).join("") + "</ul></details>";
+    setHtml("qWrap", h + "</div>");
+    loadPhotos();
+  }
+
   function renderForm() {
     var v = VIEWS[view];
     if (v.mode === "plan") {
@@ -781,6 +926,7 @@ ul.list { list-style: none; margin: 0; padding: 0; }
       setHtml("formWrap", h);
       return;
     }
+    if (v.mode === "todo") { renderQuestionForm(); return; }
     if (v.mode !== "capture") { setHtml("formWrap", ""); return; }
     var type = capType[view], T = TYPES[type];
     var f = '<div class="seg" role="group" aria-label="Art des Eintrags">';
@@ -843,6 +989,17 @@ ul.list { list-style: none; margin: 0; padding: 0; }
 
   var PENCIL = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
   function editRowHtml(it) {
+    if (it.list === "question") {
+      return '<li class="row editing" data-id="' + esc(it.id) + '"><form class="editform" autocomplete="off">' +
+        '<label class="f grow"><span>Frage</span><input type="text" class="eText" value="' + esc(it.text) + '" required maxlength="400"></label>' +
+        '<label class="f mid"><span>Fach</span><input type="text" class="eSubject" list="subjListE" value="' + esc(it.subject || "") + '" maxlength="40"></label>' + datalist("subjListE") +
+        '<label class="f wide"><span>Antwort oder Notiz</span><input type="text" class="eNote" value="' + esc(it.note || "") + '" maxlength="400"></label>' +
+        '<div class="f wide"><span>Foto</span><div class="photoRow">' +
+        (it.photo ? '<img class="thumb" data-photo="' + esc(it.photo) + '" alt="Aktuelles Foto"><label class="chkline"><input type="checkbox" class="eRm"> Foto entfernen</label>' : "") +
+        '<label class="btn ghost small filebtn">' + (it.photo ? "Anderes Foto wählen" : "Foto aufnehmen oder wählen") + '<input type="file" class="vh ePhotoIn" accept="image/*"></label></div></div>' +
+        '<p class="err eErr" hidden></p>' +
+        '<div class="editbtns"><button type="submit" class="btn small">Speichern</button><button type="button" class="btn ghost small" data-act="edit-cancel">Abbrechen</button></div></form></li>';
+    }
     var T = TYPES[it.list];
     var h = '<li class="row editing" data-id="' + esc(it.id) + '"><form class="editform" autocomplete="off">' +
       '<label class="f grow"><span>Titel</span><input type="text" class="eText" value="' + esc(it.text) + '" required maxlength="200"></label>';
@@ -933,7 +1090,7 @@ ul.list { list-style: none; margin: 0; padding: 0; }
     $("list").innerHTML = h;
   }
 
-  function renderAll() { renderNav(); renderHead(); renderNow(); renderForm(); renderList(); }
+  function renderAll() { renderNav(); renderHead(); renderNow(); renderQuestions(); renderForm(); renderList(); loadPhotos(); }
 
   function setView(k) {
     if (!VIEWS[k]) k = "uni";
@@ -962,7 +1119,11 @@ ul.list { list-style: none; margin: 0; padding: 0; }
       return;
     }
     if (act === "toggle") mutate(function () { state.items.forEach(function (i) { if (i.id === id) i.done = !i.done; }); });
-    else if (act === "del") mutate(function () { state.items = state.items.filter(function (i) { return i.id !== id; }); });
+    else if (act === "del") {
+      var gone = state.items.filter(function (i) { return i.id === id; })[0];
+      mutate(function () { state.items = state.items.filter(function (i) { return i.id !== id; }); });
+      if (gone && gone.photo) deletePhoto(gone.photo);
+    }
     else if (act === "rep") mutate(function () { state.items.forEach(function (i) { if (i.id === id) { i.reps = (i.reps || 0) + 1; i.last = dstr(new Date()); } }); });
     else if (act === "del-plan") {
       var pid = el.closest("[data-pid]").dataset.pid;
@@ -974,10 +1135,18 @@ ul.list { list-style: none; margin: 0; padding: 0; }
       state.items = state.items.filter(function (i) { return !(i.done && lists.indexOf(i.list) >= 0 && (f === "all" || i.list === f)); });
     });
     else if (act === "edit") {
-      editId = id; renderList();
+      editId = id; editPhoto = ""; renderList(); renderQuestions(); loadPhotos();
       var ef = document.querySelector(".row.editing .eText"); if (ef) ef.focus();
     }
-    else if (act === "edit-cancel") { editId = null; renderList(); }
+    else if (act === "edit-cancel") { editId = null; editPhoto = ""; renderList(); renderQuestions(); loadPhotos(); }
+    else if (act === "photo") {
+      var im = el.querySelector("img");
+      if (im && im.src) { $("lbImg").src = im.src; $("lightbox").hidden = false; }
+    }
+    else if (act === "lb-close") { $("lightbox").hidden = true; $("lbImg").removeAttribute("src"); }
+    else if (act === "photo-clear") {
+      pendingPhoto = ""; $("qPrev").hidden = true; $("qPrev").removeAttribute("src"); $("qClear").hidden = true; $("qPhoto").value = "";
+    }
     else if (act === "logout") logout();
     else if (act === "clear-ex") { mutate(function () { state.items = state.items.filter(function (i) { return !i.ex; }); state.plan = state.plan.filter(function (p) { return !p.ex; }); }); renderForm(); }
   });
@@ -987,24 +1156,82 @@ ul.list { list-style: none; margin: 0; padding: 0; }
     else if (e.target.id === "fDue") { touched.due = true; updateSugg(); }
   });
 
+  document.addEventListener("change", function (e) {
+    var t = e.target;
+    if (t.id === "qSubject") { $("qNewWrap").hidden = t.value !== "__new"; if (t.value === "__new") $("qSubjectNew").focus(); return; }
+    if (t.id === "qPhoto" || (t.classList && t.classList.contains("ePhotoIn"))) {
+      var f = t.files && t.files[0];
+      if (!f) return;
+      readPhoto(f).then(function (url) {
+        if (t.id === "qPhoto") { pendingPhoto = url; $("qPrev").src = url; $("qPrev").hidden = false; $("qClear").hidden = false; }
+        else editPhoto = url;
+      }, function (er) {
+        var box = t.id === "qPhoto" ? $("qErr") : document.querySelector(".row.editing .eErr");
+        if (box) { box.textContent = er.message; box.hidden = false; }
+      });
+    }
+  });
+
   document.addEventListener("submit", function (e) {
     if (e.target.classList && e.target.classList.contains("editform")) {
       e.preventDefault();
       var row = e.target.closest("[data-id]"), iid = row.dataset.id;
       var text = row.querySelector(".eText").value.trim();
       if (!text) return;
-      var fs = row.querySelector(".eSubject"), fd = row.querySelector(".eDue"), fq = row.querySelector(".eQty");
-      editId = null;
-      mutate(function () {
-        state.items.forEach(function (i) {
-          if (i.id !== iid) return;
-          i.text = text;
-          if (fs) { var sv = fs.value.trim(); if (sv) i.subject = sv; else delete i.subject; }
-          if (fd) { if (fd.value) i.due = fd.value; else delete i.due; }
-          if (fq) { var qv = fq.value.trim(); if (qv) i.qty = qv; else delete i.qty; }
-          delete i.ex;
+      var fs = row.querySelector(".eSubject"), fd = row.querySelector(".eDue"), fq = row.querySelector(".eQty"), fn = row.querySelector(".eNote"), rm = row.querySelector(".eRm");
+      var item = state.items.filter(function (i) { return i.id === iid; })[0] || {};
+      var oldPhoto = item.photo, wantRm = !!(rm && rm.checked), pend = editPhoto;
+      var apply = function (newId) {
+        editId = null; editPhoto = "";
+        mutate(function () {
+          state.items.forEach(function (i) {
+            if (i.id !== iid) return;
+            i.text = text;
+            if (fs) { var sv = fs.value.trim(); if (sv) i.subject = sv; else delete i.subject; }
+            if (fd) { if (fd.value) i.due = fd.value; else delete i.due; }
+            if (fq) { var qv = fq.value.trim(); if (qv) i.qty = qv; else delete i.qty; }
+            if (fn) { var nv = fn.value.trim(); if (nv) i.note = nv; else delete i.note; }
+            if (newId) i.photo = newId; else if (wantRm) delete i.photo;
+            delete i.ex;
+          });
         });
-      });
+        if ((newId || wantRm) && oldPhoto) deletePhoto(oldPhoto);
+        loadPhotos();
+      };
+      if (pend) {
+        uploadPhoto(pend).then(apply, function (err) {
+          var er = row.querySelector(".eErr");
+          if (er) { er.textContent = "Das Foto konnte nicht gespeichert werden (" + err.message + "). Hast du die Datei supabase-fotos.sql in Supabase ausgeführt?"; er.hidden = false; }
+        });
+      } else apply(null);
+      return;
+    }
+    if (e.target.id === "qForm") {
+      e.preventDefault();
+      var sel = $("qSubject").value, qs = sel === "__new" ? $("qSubjectNew").value.trim() : sel, qt = $("qText").value.trim();
+      if (!qt) return;
+      var err = $("qErr"), btn = $("qBtn");
+      err.hidden = true; btn.disabled = true;
+      var finish = function (pid) {
+        var q = { id: uid(), list: "question", text: qt, done: false, created: Date.now() };
+        if (qs) q.subject = qs;
+        if (pid) q.photo = pid;
+        lastQSubject = qs;
+        mutate(function () { state.items.push(q); });
+        renderForm();
+        var ok = $("qOk");
+        ok.textContent = "Frage gespeichert. Sie steht jetzt in der Vorlesungsansicht.";
+        ok.hidden = false;
+        clearTimeout(okTimer);
+        okTimer = setTimeout(function () { var o = $("qOk"); if (o) o.hidden = true; }, 4000);
+      };
+      if (pendingPhoto) {
+        uploadPhoto(pendingPhoto).then(finish, function (er) {
+          btn.disabled = false;
+          err.textContent = "Das Foto konnte nicht gespeichert werden (" + er.message + "). Hast du die Datei supabase-fotos.sql in Supabase ausgeführt? Du kannst die Frage auch ohne Foto speichern.";
+          err.hidden = false;
+        });
+      } else finish(null);
       return;
     }
     var id = e.target.id;
@@ -1040,7 +1267,7 @@ ul.list { list-style: none; margin: 0; padding: 0; }
   function tick() {
     if (!sess) return;
     renderNow();
-    if (view === "uni") applySuggestion();
+    if (view === "uni") { applySuggestion(); if (!editId) renderQuestions(); }
     tickN++;
     if (dirty && !saving) flush(); else if (tickN % 2 === 0) syncDown();
   }
