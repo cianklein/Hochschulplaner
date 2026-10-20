@@ -181,6 +181,15 @@ ul.list { list-style: none; margin: 0; padding: 0; }
 .tag.priv { background: var(--priv-soft); color: var(--priv); }
 .tag.warn { background: var(--warn-soft); color: var(--warn); }
 .tag.ex { background: transparent; border: 1px dashed var(--line); font-weight: 500; }
+.edit { flex: none; width: 44px; height: 44px; border: 0; background: transparent; border-radius: 10px; color: var(--muted); display: inline-flex; align-items: center; justify-content: center; }
+.edit:hover { background: var(--brand-soft); color: var(--brand); }
+.row.editing { display: block; background: var(--surface-2); }
+.editform { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+.editform .f { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.editform .f > span { font-size: 13px; color: var(--muted); font-weight: 600; }
+.editform .grow { flex: 1 1 260px; }
+.editform .mid { flex: 0 1 180px; }
+.editbtns { display: flex; gap: 10px; }
 .del { flex: none; width: 44px; height: 44px; border: 0; background: transparent; border-radius: 10px; color: var(--muted); font-size: 26px; line-height: 1; }
 .del:hover { background: var(--warn-soft); color: var(--warn); }
 .sep { padding: 20px 20px 10px; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 700; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
@@ -344,6 +353,7 @@ ul.list { list-style: none; margin: 0; padding: 0; }
   var BUCKETS = ["Überfällig", "Heute", "Morgen", "Übermorgen", "Diese Woche", "Nächste Woche", "Später", "Ohne Datum"];
 
   var state = { items: [], plan: [], updated: 0 };
+  var editId = null;
   var view = "uni";
   var capType = { uni: "hw", priv: "priv_todo" };
   var todoFilter = "all";
@@ -752,8 +762,8 @@ ul.list { list-style: none; margin: 0; padding: 0; }
     setHtml("nowWrap", '<section class="now"><div><div class="now-state"><span class="live' + (live ? "" : " idle") + '"></span>' + stateText + '</div><div class="now-title">' + esc(title) + '</div><div class="now-sub">' + sub + "</div>" + bar + "</div>" + today + "</section>");
   }
 
-  function datalist() {
-    return '<datalist id="subjList">' + subjects().map(function (s) { return '<option value="' + esc(s) + '">'; }).join("") + "</datalist>";
+  function datalist(id) {
+    return '<datalist id="' + (id || "subjList") + '">' + subjects().map(function (s) { return '<option value="' + esc(s) + '">'; }).join("") + "</datalist>";
   }
 
   function renderForm() {
@@ -831,7 +841,18 @@ ul.list { list-style: none; margin: 0; padding: 0; }
     el.hidden = false;
   }
 
+  var PENCIL = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+  function editRowHtml(it) {
+    var T = TYPES[it.list];
+    var h = '<li class="row editing" data-id="' + esc(it.id) + '"><form class="editform" autocomplete="off">' +
+      '<label class="f grow"><span>Titel</span><input type="text" class="eText" value="' + esc(it.text) + '" required maxlength="200"></label>';
+    if (T.fields.indexOf("subject") >= 0) h += '<label class="f mid"><span>Fach</span><input type="text" class="eSubject" list="subjListE" value="' + esc(it.subject || "") + '" maxlength="40"></label>' + datalist("subjListE");
+    if (T.fields.indexOf("due") >= 0) h += '<label class="f mid"><span>' + T.dueLabel + '</span><input type="date" class="eDue" value="' + esc(it.due || "") + '"></label>';
+    if (T.fields.indexOf("qty") >= 0) h += '<label class="f mid"><span>Menge</span><input type="text" class="eQty" value="' + esc(it.qty || "") + '" maxlength="30"></label>';
+    return h + '<div class="editbtns"><button type="submit" class="btn small">Speichern</button><button type="button" class="btn ghost small" data-act="edit-cancel">Abbrechen</button></div></form></li>';
+  }
   function rowHtml(it, opts) {
+    if (it.id === editId) return editRowHtml(it);
     var T = TYPES[it.list], meta = "";
     if (opts.typeTag) meta += '<span class="tag ' + T.tag + '">' + T.tagText + "</span>";
     if (it.subject) meta += '<span class="tag"><i class="dot ' + colorOf(it.subject) + '"></i>' + esc(it.subject) + "</span>";
@@ -847,6 +868,7 @@ ul.list { list-style: none; margin: 0; padding: 0; }
     var rep = opts.check && it.list === "topic" && !it.done ? '<button type="button" class="btn ghost small" data-act="rep">Wiederholt</button>' : "";
     return '<li class="row' + (it.done ? " done" : "") + '" data-id="' + esc(it.id) + '">' + lead +
       '<div class="txt"><span class="t">' + esc(it.text) + "</span>" + (meta ? '<span class="meta">' + meta + "</span>" : "") + "</div>" + rep +
+      '<button type="button" class="edit" data-act="edit" aria-label="Bearbeiten: ' + esc(it.text) + '">' + PENCIL + '</button>' +
       '<button type="button" class="del" data-act="del" aria-label="Löschen: ' + esc(it.text) + '">×</button></li>';
   }
   function emptyHtml(a, b) { return '<li class="empty"><strong>' + a + "</strong>" + b + "</li>"; }
@@ -915,7 +937,7 @@ ul.list { list-style: none; margin: 0; padding: 0; }
 
   function setView(k) {
     if (!VIEWS[k]) k = "uni";
-    view = k;
+    view = k; editId = null;
     try { localStorage.setItem(LS_VIEW, k); } catch (e) {}
     renderAll();
   }
@@ -951,6 +973,11 @@ ul.list { list-style: none; margin: 0; padding: 0; }
       var f = view === "todo" ? todoFilter : shopFilter;
       state.items = state.items.filter(function (i) { return !(i.done && lists.indexOf(i.list) >= 0 && (f === "all" || i.list === f)); });
     });
+    else if (act === "edit") {
+      editId = id; renderList();
+      var ef = document.querySelector(".row.editing .eText"); if (ef) ef.focus();
+    }
+    else if (act === "edit-cancel") { editId = null; renderList(); }
     else if (act === "logout") logout();
     else if (act === "clear-ex") { mutate(function () { state.items = state.items.filter(function (i) { return !i.ex; }); state.plan = state.plan.filter(function (p) { return !p.ex; }); }); renderForm(); }
   });
@@ -961,6 +988,25 @@ ul.list { list-style: none; margin: 0; padding: 0; }
   });
 
   document.addEventListener("submit", function (e) {
+    if (e.target.classList && e.target.classList.contains("editform")) {
+      e.preventDefault();
+      var row = e.target.closest("[data-id]"), iid = row.dataset.id;
+      var text = row.querySelector(".eText").value.trim();
+      if (!text) return;
+      var fs = row.querySelector(".eSubject"), fd = row.querySelector(".eDue"), fq = row.querySelector(".eQty");
+      editId = null;
+      mutate(function () {
+        state.items.forEach(function (i) {
+          if (i.id !== iid) return;
+          i.text = text;
+          if (fs) { var sv = fs.value.trim(); if (sv) i.subject = sv; else delete i.subject; }
+          if (fd) { if (fd.value) i.due = fd.value; else delete i.due; }
+          if (fq) { var qv = fq.value.trim(); if (qv) i.qty = qv; else delete i.qty; }
+          delete i.ex;
+        });
+      });
+      return;
+    }
     var id = e.target.id;
     if (id !== "addForm" && id !== "planForm") return;
     e.preventDefault();
